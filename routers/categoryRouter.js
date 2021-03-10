@@ -28,12 +28,10 @@ categoryRouter.post('/category/create', (req, res) => {
 categoryRouter.get('/', expressAsyncHandler(async (req, res) => {
   let order = req.query.order ? req.query.order : 'asc';
   let sortBy = req.query.sortBy ? req.query.sortBy : '_id';
-  let limit = req.query.limit ? parseInt(req.query.limit) : 6;
 
   try {
     const categories = await Category.find({})
       .sort([[sortBy, order]])
-      .limit(limit)
     res.send(categories);
   } catch (err) {
     return res.status(500).send({
