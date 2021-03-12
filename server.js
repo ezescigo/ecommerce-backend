@@ -7,11 +7,17 @@ import categoryRouter from './routers/categoryRouter.js';
 import { } from 'dotenv/config';
 
 const app = express();
-mongoose.connect(process.env.DATABASE, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  useCreateIndex: true,
-});
+try {
+  mongoose.connect(process.env.DATABASE, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    useCreateIndex: true,
+  });
+  console.log('db connected.')
+} catch (err) {
+  console.log(error.reason)
+}
+
 
 // app.get("/api/products", (req, res) => {
 //   res.send(data.products);
