@@ -34,24 +34,16 @@ productRouter.get('/preview', expressAsyncHandler(async (req, res) => {
 //  if no query params are sent, then 10 Products are returned. => <<<< Will change to a few of each categories. >>>>
 // http://localhost:5600/api/products/beers/accesories?&limit=2&params=...
 
-productRouter.get('/:category/:subcategory?', expressAsyncHandler(async (req, res) => {
+// query params: limit, name, min, max, order
+
+productRouter.get('/:category?/:subcategory?', expressAsyncHandler(async (req, res) => {
   const limit = req.query.limit;
-  // add more useful params for pagination
+  const name = req.query.name || '';
   const subcategory = req.params.subcategory;
   let category = '';
-
-  // (typeof subcategory === 'undefined')
-  //   ? category = req.params.category
-  //   : subcategory === ''
-  //     ? null
-  //     : category = subcategory
-
   category = subcategory || req.params.category;
 
-  console.log('category: ', category);
-  console.log('sub: ', subcategory);
-  console.log('limit', limit);
-
+  // We first get _id of category or subcategory
   try {
     req.category = await Category.findOne({ slug: category })
   } catch (err) {
@@ -59,10 +51,59 @@ productRouter.get('/:category/:subcategory?', expressAsyncHandler(async (req, re
       message: err.message,
       comment: ' in Category.findOne'
     })
-  }
+  };
+
+  const categoryFilter = category ? { categoryIds: ObjectId(req.category.id) } : {};
+  const min =
+    req.query.min && Number(req.query.min) !== 0 ? Number(req.query.min) : 0;
+  const max =
+    req.query.max && Number(req.query.max) !== 0 ? Number(req.query.max) : 0;
+  const priceFilter =
+    min && max
+      ? {
+        price: { $gte: Number(min), $lte: Number(max) },
+      }
+      : max
+        ? {
+          price: { $lte: Number(max) }
+        }
+        : min
+          ? {
+            price: { $gte: Number(min) }
+          }
+          : {};
+  const nameFilter = name
+    ? {
+      name: {
+        $regex: `.*${name}.*`,
+        $options: 'si',
+      },
+    }
+    : {};
+  const order = req.query.order
+    ? req.query.order === 'lowest'
+      ? { price: 1 }
+      : req.query.order === 'highest'
+        ? { price: -1 }
+        : req.query.order === 'newest'
+          ? { _id: -1 }
+          : { rating: -1 }
+    : { _id: -1 };
+  // add more useful params for pagination
+
+
+  console.log('category: ', category);
+  console.log('sub: ', subcategory);
+  console.log('limit', limit);
 
   try {
-    let products = await Product.find({ categoryIds: ObjectId(req.category.id) });
+    let products = await Product.find({
+      ...categoryFilter,
+      ...priceFilter,
+      ...nameFilter
+    })
+      .populate('categoryIds', '_id name slug')
+      .sort(order);
     res.send(products);
   } catch (err) {
     console.log(err.message);
